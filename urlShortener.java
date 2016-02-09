@@ -1,135 +1,93 @@
-package Algorithm.Design;
-
 import java.util.HashMap;
 import java.util.Random;
 
-public class URLShortener {
-    private HashMap<String, String> keyMap; // key-url map
-    private HashMap<String, String> valueMap;// url-key map to quickly check whether an url is already entered in our system
-    private String domain; // Use this attribute to generate urls for a custom domain name defaults to http://fkt.in
-    private char myChars[]; // This array is used for character to number mapping
-    private Random myRand; // Random object used to generate random integers
-    private int keyLength; // the key length in URL defaults to 8
+public class ShortenURL {
+    private HashMap<String, String> keyMap; //map longUrl to shortUrl
+    private HashMap<String, String> valueMap; //map shortUrl to longUrl
+    private char[] charts;  //charts used for hashing
+    private Random random;  //RNG that creates key
+    private int keyLength; //the length of short url, defaults to 8
+    private String domain; //the default domain for the shortUrl
 
-    // Default Constructor
-    public URLShortener() {
-        keyMap = new HashMap<String, String>();
-        valueMap = new HashMap<String, String>();
-        myRand = new Random();
+    public ShortenURL() {
+        keyMap = new HashMap<>();
+        valueMap = new HashMap<>();
+        charts = new char[62];
+        generateCharts(charts);
+        random = new Random();
         keyLength = 8;
-        myChars = new char[62];
-        for (int i = 0; i < 62; i++) {
-            int j = 0;
-            if (i < 10) {
-                j = i + 48;
-            } else if (i > 9 && i <= 35) {
-                j = i + 55;
-            } else {
-                j = i + 61;
-            }
-            myChars[i] = (char) j;
-        }
-        domain = "http://fkt.in";
+        domain = "www.tinyurl.com/";
     }
 
-    // Constructor which enables you to define tiny URL key length and base URL
-    // name
-    public URLShortener(int length, String newDomain) {
+    public ShortenURL(int length, String domain) {
         this();
-        this.keyLength = length;
-        if (!newDomain.isEmpty()) {
-            newDomain = sanitizeURL(newDomain);
-            domain = newDomain;
+        keyLength = length;
+        if (!domain.isEmpty()) this.domain = sanitizeUrl(domain);
+    }
+
+    public String shortenUrl(String longUrl) {
+        String shortUrl = "";
+        if (validateUrl(longUrl)) {
+            longUrl = sanitizeUrl(longUrl);
+            if (valueMap.containsKey(longUrl)) shortUrl = domain + "/" + valueMap.get(longUrl);
+            else shortUrl = domain + "/" + getKey(longUrl);
         }
+        return shortUrl;
     }
 
-    // shortenURL
-    // the public method which can be called to shorten a given URL
-    public String shortenURL(String longURL) {
-        String shortURL = "";
-        if (validateURL(longURL)) {
-            longURL = sanitizeURL(longURL);
-            if (valueMap.containsKey(longURL)) {
-                shortURL = domain + "/" + valueMap.get(longURL);
-            } else {
-                shortURL = domain + "/" + getKey(longURL);
-            }
-        }
-        // add http part
-        return shortURL;
+    public String expandUrl(String shortUrl) {
+        String key = shortUrl.substring(this.domain.length() + 1);
+        return keyMap.get(key);
     }
 
-    // expandURL
-    // public method which returns back the original URL given the shortened url
-    public String expandURL(String shortURL) {
-        String longURL = "";
-        String key = shortURL.substring(domain.length() + 1);
-        longURL = keyMap.get(key);
-        return longURL;
-    }
-
-    // Validate URL
-    // not implemented, but should be implemented to check whether the given URL is valid or not
-    boolean validateURL(String url) {
-        return true;
-    }
-
-    // sanitizeURL
-    // This method should take care various issues with a valid url e.g. www.google.com,www.google.com/, http://www.google.com,
-    // http://www.google.com/ all the above URL should point to same shortened URL There could be several other cases like these.
-    String sanitizeURL(String url) {
-        if (url.substring(0, 7).equals("http://"))
-            url = url.substring(7);
-
-        if (url.substring(0, 8).equals("https://"))
-            url = url.substring(8);
-
-        if (url.charAt(url.length() - 1) == '/')
-            url = url.substring(0, url.length() - 1);
-        return url;
-    }
-
-    /*
-     * Get Key method
-     */
-    private String getKey(String longURL) {
-        String key;
-        key = generateKey();
-        keyMap.put(key, longURL);
-        valueMap.put(longURL, key);
-        return key;
-    }
-
-    // generateKey
-    private String generateKey() {
+    private String getKey(String longUrl) {
         String key = "";
         boolean flag = true;
         while (flag) {
-            key = "";
-            for (int i = 0; i <= keyLength; i++) {
-                key += myChars[myRand.nextInt(62)];
+            for (int i = 0; i < keyLength; i++) {
+                key += charts[random.nextInt(62)];
             }
-            // System.out.println("Iteration: "+ counter + "Key: "+ key);
-            if (!keyMap.containsKey(key)) {
-                flag = false;
-            }
+            if (!keyMap.containsKey(key)) flag = false;
+            else key = "";
         }
+        keyMap.put(key, longUrl);
+        valueMap.put(longUrl, key);
+
         return key;
     }
 
-    // test the code
-    public static void main(String args[]) {
-        URLShortener u = new URLShortener(8, "www.tinyurl.com/");
+    private boolean validateUrl(String longUrl) {
+        return !longUrl.isEmpty(); //more validation needed in production
+    }
+
+    private String sanitizeUrl(String longUrl) {
+        if (longUrl.substring(0, 7).equals("http://")) longUrl = longUrl.substring(7);
+        if (longUrl.substring(0, 8).equals("https://")) longUrl = longUrl.substring(8);
+        if (longUrl.charAt(longUrl.length() - 1) == '/') longUrl = longUrl.substring(0, longUrl.length() - 1);
+        return longUrl;
+    }
+
+    private void generateCharts(char[] charts) {
+        for (int i = 0; i < 62; i++) {
+            int curr;
+            if (i < 10) curr = i + 48;
+            else if (i >= 10 && i <= 35) curr = i + 55;
+            else curr = i + 61;
+            charts[i] = (char) curr;
+        }
+    }
+
+    public static void main(String[] args) {
+        ShortenURL u = new ShortenURL(5, "http://www.tinyurl.com/");
         String urls[] = { "www.google.com/", "www.google.com",
                 "http://www.yahoo.com", "www.yahoo.com/", "www.amazon.com",
                 "www.amazon.com/page1.php", "www.amazon.com/page2.php",
                 "www.flipkart.in", "www.rediff.com", "www.techmeme.com",
                 "www.techcrunch.com", "www.lifehacker.com", "www.icicibank.com" };
-
-        for (int i = 0; i < urls.length; i++) {
-            System.out.println("URL:" + urls[i] + "\tTiny: "
-                    + u.shortenURL(urls[i]) + "\tExpanded: "
-                    + u.expandURL(u.shortenURL(urls[i])));
+        for (String url : urls) {
+            System.out.println("URL: " + url + "\tTiny: "
+                    + u.shortenUrl(url) + "\tExpanded: "
+                    + u.expandUrl(u.shortenUrl(url)));
         }
     }
 }
